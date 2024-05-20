@@ -105,15 +105,12 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   /* TODO INCREASE THE LIMIT
    * inc_vma_limit(caller, vmaid, inc_sz)
    */
-  if (size + cur_vma->sbrk > PAGING_PAGE_ALIGNSZ(cur_vma->sbrk) || cur_vma->sbrk == cur_vma->vm_end)
+  if (size + old_sbrk > cur_vma->vm_end)
 	{ // new rg exceed the current page => so, must increase the vm_end
-		inc_vma_limit(caller, vmaid, size);
+		if(inc_vma_limit(caller, vmaid, inc_sz)<0) return -1;
+
 	}
-	else
-	{ // new region do not exceed current page
-		// just pass
 		cur_vma->sbrk += size;
-	}
 
   /*Successful increase limit */
   caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
@@ -143,9 +140,8 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
 
   /*enlist the obsoleted memory region */
   enlist_vm_freerg_list(caller->mm, rgnode);
-  rgnode->rg_start = -1;
-	rgnode->rg_end = -1;
-  rgnode->rg_next=NULL;
+  caller->mm->symrgtbl[rgid].rg_start = 0;
+	caller->mm->symrgtbl[rgid].rg_end = 0;
   return 0;
 }
 
@@ -470,7 +466,7 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
  *@pgn: return page number
  *
  */
-int find_victim_page(struct mm_struct *mm, int *retpgn) 
+int find_victim_page(struct pcb_t *caller, struct mm_struct *mm, int *retpgn) 
 {
   struct pgn_t *pg = mm->fifo_pgn;
 
