@@ -1,4 +1,4 @@
-#ifndef MM_H
+ifndef MM_H
 
 #include "bitops.h"
 #include "common.h"
@@ -93,9 +93,6 @@
 #define INCLUDE(x1,x2,y1,y2) (((y1-x1)*(x2-y2)>=0)?1:0)
 #define OVERLAP(x1,x2,y1,y2) (((y2-x1)*(x2-y1)>=0)?1:0)
 
-#define RAM_LCK 0
-#define TLB_INDEX(pid, pgn) ((pid << NBITS2(PAGING_MAX_PGN)) | pgn)
-
 /* VM region prototypes */
 struct vm_rg_struct * init_vm_rg(int rg_start, int rg_endi);
 int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode);
@@ -129,11 +126,9 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index);
 int tlbread(struct pcb_t * proc, uint32_t source, uint32_t offset, uint32_t destination) ;
 int tlbwrite(struct pcb_t * proc, BYTE data, uint32_t destination, uint32_t offset);
 int init_tlbmemphy(struct memphy_struct *mp, int max_size);
-int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, uint32_t *value);
-int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, uint32_t value);
 int TLBMEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value);
 int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data);
-int TLBMEMPHY_dump(struct memphy_struct * mp, int pid, int pgnum);
+int TLBMEMPHY_dump(struct memphy_struct * mp);
 
 /* VM prototypes */
 int pgalloc(struct pcb_t *proc, uint32_t size, uint32_t reg_index);
@@ -153,14 +148,14 @@ struct vm_rg_struct * get_symrg_byid(struct mm_struct* mm, int rgid);
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend);
 int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_struct *newrg);
 int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz);
-int find_victim_page(struct mm_struct* mm, int *pgn);
+int find_victim_page(struct pcb_t *caller, struct mm_struct *mm, int *retpgn);
 struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid);
 
 /* MEM/PHY protypes */
 int MEMPHY_get_freefp(struct memphy_struct *mp, int *fpn);
 int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn);
 int MEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value);
-int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data, BYTE option);
+int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data);
 int MEMPHY_dump(struct memphy_struct * mp);
 int init_memphy(struct memphy_struct *mp, int max_size, int randomflg);
 /* DEBUG */
