@@ -288,7 +288,7 @@ int tlbwrite(struct pcb_t * proc, BYTE data, uint32_t destination, uint32_t offs
     addr += offset;
     int off = PAGING_OFFST(addr); // Offset in the page
     int phyaddr = (frmnum << PAGING_ADDR_FPN_LOBIT) + off; // Physical address
-    val = MEMPHY_write(proc->mram, phyaddr, data, RAM_LCK); // Write data
+    val = MEMPHY_write(proc->mram, phyaddr, data); // Write data
     if (val < 0) 
     {
       #ifdef DEBUG

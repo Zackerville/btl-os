@@ -162,7 +162,7 @@ struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid);
 int MEMPHY_get_freefp(struct memphy_struct *mp, int *fpn);
 int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn);
 int MEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value);
-int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data, BYTE option);
+int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data);
 int MEMPHY_dump(struct memphy_struct * mp);
 int init_memphy(struct memphy_struct *mp, int max_size, int randomflg);
 /* DEBUG */
