@@ -159,7 +159,7 @@ int init_tlbmemphy(struct memphy_struct *mp, int max_size)
    mp->maxsz = max_size;
 
    mp->rdmflg = 1;
-   pthread_mutex_init(&tlb_lock, NULL);
+   pthread_mutex_init(&tlb_lock, NULL); 
    return 0;
 }
 

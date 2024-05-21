@@ -99,6 +99,7 @@ int vmap_page_range(struct pcb_t *caller, // process call
    *      [addr to addr + pgnum*PAGING_PAGESZ
    *      in page table caller->mm->pgd[]
    */
+  
   for(pgit = 0; pgit < pgnum; pgit++){
     fpit = fpit->fp_next;
     pgn = PAGING_PGN(addr + pgit*PAGING_PAGESZ); //this is index of this page in process's page table
@@ -384,7 +385,7 @@ int print_list_pgn(struct pgn_t *ip)
 
 int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end)
 {
-  int pgn_start,pgn_end;
+  int pgn_start, pgn_end;
   int pgit;
 
   if(end == -1){

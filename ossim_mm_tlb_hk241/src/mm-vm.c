@@ -98,7 +98,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
   int inc_sz = PAGING_PAGE_ALIGNSZ(size);
   //int inc_limit_ret
-  int old_sbrk ;
+  int old_sbrk;
 
   old_sbrk = cur_vma->sbrk;
 
