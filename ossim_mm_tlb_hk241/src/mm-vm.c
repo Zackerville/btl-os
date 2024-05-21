@@ -63,10 +63,10 @@ struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid)
  */
 struct vm_rg_struct *get_symrg_byid(struct mm_struct *mm, int rgid)
 {
-  if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
-    return NULL;
+  if (rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
+		return NULL;
 
-  return &mm->symrgtbl[rgid];
+	return mm->symrgtbl[rgid];
 }
 
 /*__alloc - allocate a region memory
@@ -422,7 +422,7 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
     if(vmaid != vma->vm_id)
     {
       if(OVERLAP(vmastart,vmaend,vma->vm_start,vma->vm_end)){
-        if((vmastart !=vma->vm_end || vmaend==vma->vm_start) && vmastart ==vma->vm_end || vmaend !=vma->vm_start) return -1;
+        if((vmastart !=vma->vm_end || vmaend==vma->vm_start) && (vmastart ==vma->vm_end || vmaend !=vma->vm_start)) return -1;
       }
     }
     vma=vma->vm_next;
