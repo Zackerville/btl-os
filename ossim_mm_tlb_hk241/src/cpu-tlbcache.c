@@ -19,8 +19,13 @@
 
 #include "mm.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
 
 #define init_tlbcache(mp,sz,...) init_memphy(mp, sz, (1, ##__VA_ARGS__))
+
+//bien dong bo de khoa tlb khi thuc thi
+pthread_mutex_t tlb_lock;
 
 /*
  *  tlb_cache_read read TLB cache device
@@ -29,12 +34,31 @@
  *  @pgnum: page number
  *  @value: obtained value
  */
-int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
+int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, uint32_t *value)
 {
    /* TODO: the identify info is mapped to 
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
+
+   uint32_t *storage = (uint32_t*) mp->storage;
+
+   uint32_t i = TLB_INDEX(pid, pgnum);
+
+   uint32_t id = (i % (mp->maxsz / 8)) * 2;
+   uint32_t tag = i / (mp->maxsz / 8);
+
+   pthread_mutex_lock(&tlb_lock);
+
+   if(storage[id] != tag) 
+   {
+      pthread_mutex_unlock(&tlb_lock);
+      return -1;
+   }
+
+   *value = storage[id + 1];
+   pthread_mutex_unlock(&tlb_lock);
+
    return 0;
 }
 
@@ -45,12 +69,25 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
  *  @pgnum: page number
  *  @value: obtained value
  */
-int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
+int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, uint32_t value)
 {
    /* TODO: the identify info is mapped to 
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
+
+   uint32_t *storage = (uint32_t*) mp->storage;
+   uint32_t i = TLB_INDEX(pid, pgnum);
+   uint32_t id = (i % (mp->maxsz / 8)) * 2;
+   uint32_t tag = i / (mp->maxsz / 8);
+
+   pthread_mutex_lock(&tlb_lock);
+
+   storage[id] = tag;
+   storage[id + 1] = value;
+
+   pthread_mutex_unlock(&tlb_lock);
+
    return 0;
 }
 
@@ -95,11 +132,19 @@ int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
  */
 
 
-int TLBMEMPHY_dump(struct memphy_struct * mp)
+int TLBMEMPHY_dump(struct memphy_struct * mp, int pid, int pgnum)
 {
    /*TODO dump memphy contnt mp->storage 
     *     for tracing the memory content
     */
+
+   uint32_t *storage = (uint32_t *)mp->storage;
+
+   uint32_t i = TLB_INDEX(pid, pgnum);
+   uint32_t id = (i % (mp->maxsz / 8)) * 2;
+
+   printf("TLBMEMPHY dump:\n");
+   printf("%08x: %08x\n", storage[id], storage[id + 1]);
 
    return 0;
 }
@@ -114,7 +159,7 @@ int init_tlbmemphy(struct memphy_struct *mp, int max_size)
    mp->maxsz = max_size;
 
    mp->rdmflg = 1;
-
+   pthread_mutex_init(&tlb_lock, NULL);
    return 0;
 }
 
