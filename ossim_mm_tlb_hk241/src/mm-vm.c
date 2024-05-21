@@ -66,7 +66,7 @@ struct vm_rg_struct *get_symrg_byid(struct mm_struct *mm, int rgid)
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
     return NULL;
 
-  return &mm->symrgtbl[rgid];
+  return mm->symrgtbl[rgid];
 }
 
 /*__alloc - allocate a region memory
