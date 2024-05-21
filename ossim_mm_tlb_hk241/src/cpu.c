@@ -1,4 +1,3 @@
-
 #include "cpu.h"
 #include "mem.h"
 #include "mm.h"
@@ -100,5 +99,3 @@ int run(struct pcb_t * proc) {
 	return stat;
 
 }
-
-

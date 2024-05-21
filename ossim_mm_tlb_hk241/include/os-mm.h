@@ -51,7 +51,7 @@ struct mm_struct {
    struct vm_area_struct *mmap;
 
    /* Currently we support a fixed number of symbol */
-   struct vm_rg_struct symrgtbl[PAGING_MAX_SYMTBL_SZ];
+   struct vm_rg_struct *symrgtbl[PAGING_MAX_SYMTBL_SZ];
 
    /* list of free page */
    struct pgn_t *fifo_pgn;
