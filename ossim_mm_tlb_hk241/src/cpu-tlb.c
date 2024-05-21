@@ -28,6 +28,12 @@ int tlb_change_all_page_tables_of(struct pcb_t *proc,  struct memphy_struct * mp
 int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct * mp)
 {
   /* TODO flush tlb cached*/
+  #ifdef CPU_TLB
+      for(uint32_t i = 0; i < proc->tlb->maxsz; i++)
+      {
+        proc->tlb->storage[i] = 0;
+      }
+  #endif
 
   return 0;
 }
@@ -42,12 +48,34 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
   int addr, val;
 
   /* By default using vmaid = 0 */
-  val = __alloc(proc, 0, reg_index, size, &addr);
+  int rgid = 0;
+
+  while(rgid < PAGING_MAX_SYMTBL_SZ && proc->mm->symrgtbl[rgid] != NULL) rgid++;
+
+  if(rgid == PAGING_MAX_SYMTBL_SZ)
+  {
+    #ifdef DEBUG
+      printf("Out of memory region\n");
+    #endif // DEBUG
+    
+    return -1;
+
+  }
+
+  val = __alloc(proc, 0, rgid, size, &addr);
 
   /* TODO update TLB CACHED frame num of the new allocated page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
+  #ifdef DEBUG
+    printf("allocated %d for memory region %d: \n", size, rgid);
+    printf_pgtbl(proc, 0, -1);
+  #endif
 
-  return val;
+  if(val < 0) return -1;
+
+  proc->regs[reg_index] = addr;
+
+  return 0;
 }
 
 /*pgfree - CPU TLB-based free a region memory
@@ -61,8 +89,25 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
 
   /* TODO update TLB CACHED frame num of freed page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
+  addr_t addr = proc->regs[reg_index];
 
-  return 0;
+  int rgid;
+
+  for(rgid = 0; rgid < PAGING_MAX_SYMTBL_SZ; rgid++)
+  {
+    if(proc->mm->symrgtbl[rgid] != NULL && proc->mm->symrgtbl[rgid]->rg_start == addr) break;
+  }
+
+  if(rgid == PAGING_MAX_SYMTBL_SZ) return -1;
+
+  int val = __free(proc, 0, rgid);
+
+  #ifdef DEBUG
+    printf("Memory region freed: %d\n", rgid);
+    print_pgtbl(proc, 0, -1);
+  #endif
+
+  return val;
 }
 
 
@@ -75,33 +120,99 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
 int tlbread(struct pcb_t * proc, uint32_t source,
             uint32_t offset, 	uint32_t destination) 
 {
-  BYTE data, frmnum = -1;
+  BYTE data;
+  int frmnum = -1;
 	
   /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
   /* frmnum is return value of tlb_cache_read/write value*/
 	
-#ifdef IODUMP
-  if (frmnum >= 0)
-    printf("TLB hit at read region=%d offset=%d\n", 
+  addr_t addr = proc->regs[source];
+  int pgn = PAGING_PGN((addr + offset));
+  uint32_t pte;
+
+  if(tlb_cache_read(proc->tlb, proc->pid, pgn, &pte) == 0 && PAGING_PAGE_PRESENT(pte))
+  {
+    frmnum = PAGING_FPN(pte);
+  }
+
+  #ifdef IODUMP
+    if (frmnum >= 0)
+      printf("TLB hit at read region=%d offset=%d\n", 
 	         source, offset);
+    else 
+      printf("TLB miss at read region=%d offset=%d\n", 
+	         source, offset);
+
+  #ifdef PAGETBL_DUMP
+    print_pgtbl(proc, 0, -1); //print max TBL
+  #endif
+  #endif
+
+  #ifdef TLBDUMP
+    TLBMEMPHY_dump(proc->tlb, proc->pid, pgn);
+  #endif
+
+  int val; // Variable to store return value
+  if (frmnum < 0) 
+  {
+    int rgid; // Region ID
+    /* Find region start address */
+    for (rgid = 0; rgid < PAGING_MAX_SYMTBL_SZ; rgid++) 
+    {
+      if (proc->mm->symrgtbl[rgid] != NULL && proc->mm->symrgtbl[rgid]->rg_start == addr) break;
+    }
+    if (rgid == PAGING_MAX_SYMTBL_SZ) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: No region found\n");
+      #endif
+        return -1;
+    }
+    /* Read data from region */
+    val = __read(proc, 0, rgid, offset, &data);
+    if (val < 0) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: Read error\n");
+      #endif
+
+        return -1;
+    }
+  } 
   else 
-    printf("TLB miss at read region=%d offset=%d\n", 
-	         source, offset);
-#ifdef PAGETBL_DUMP
-  print_pgtbl(proc, 0, -1); //print max TBL
-#endif
-  MEMPHY_dump(proc->mram);
-#endif
+  {
+    addr += offset;
+    int off = PAGING_OFFST(addr);
+    int phyaddr = (frmnum << PAGING_ADDR_FPN_LOBIT) + off;
+    /* Read data from memory */
+    val = MEMPHY_read(proc->mram, phyaddr, &data);
+    if (val < 0) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: Read error\n");
+      #endif
 
-  int val = __read(proc, 0, source, offset, &data);
+        return -1;
+    }
+  }
+  if (val < 0) return -1;
 
-  destination = (uint32_t) data;
+  /* Store read data in destination register */
+  proc->regs[destination] = (uint32_t) data;
 
-  /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
+  #ifdef IODUMP
+    printf("read data=%d\n", data);
+  #endif
 
-  return val;
+  #ifdef DEBUG
+  /* Dump memory physical address */
+    frmnum = PAGING_FPN(proc->mm->pgd[pgn]);
+    MEMPHY_dump(proc->mram, frmnum, offset, offset + 1);
+  #endif
+
+  return 0;
+
 }
 
 /*tlbwrite - CPU TLB-based write a region memory
@@ -110,33 +221,88 @@ int tlbread(struct pcb_t * proc, uint32_t source,
  *@destination: index of destination register
  *@offset: destination address = [destination] + [offset]
  */
-int tlbwrite(struct pcb_t * proc, BYTE data,
-             uint32_t destination, uint32_t offset)
+int tlbwrite(struct pcb_t * proc, BYTE data, uint32_t destination, uint32_t offset)
 {
-  int val;
-  BYTE frmnum = -1;
+  int val; // Variable to store return value
 
-  /* TODO retrieve TLB CACHED frame num of accessing page(s))*/
-  /* by using tlb_cache_read()/tlb_cache_write()
-  frmnum is return value of tlb_cache_read/write value*/
+  /* Check if page table entry is in TLB cache */
+  int frmnum = -1; // Frame number of page table directory
+  addr_t addr = proc->regs[destination]; // Memory address
+  int pgn = PAGING_PGN((addr + offset)); // Page number
+  uint32_t pte; // Page table entry
 
-#ifdef IODUMP
-  if (frmnum >= 0)
-    printf("TLB hit at write region=%d offset=%d value=%d\n",
-	          destination, offset, data);
-	else
-    printf("TLB miss at write region=%d offset=%d value=%d\n",
-            destination, offset, data);
-#ifdef PAGETBL_DUMP
-  print_pgtbl(proc, 0, -1); //print max TBL
-#endif
-  MEMPHY_dump(proc->mram);
-#endif
+  if (tlb_cache_read(proc->tlb, proc->pid, pgn, &pte) == 0 && PAGING_PAGE_PRESENT(pte)) 
+  {
+    frmnum = PAGING_FPN(pte); // Get frame number of page table directory
+  }
 
-  val = __write(proc, 0, destination, offset, data);
+  #ifdef IODUMP
+  /* Print TLB hit or miss */
+    if (frmnum >= 0) printf("TLB hit at write destination=%d offset=%d value=%d\n", destination, offset, data);
+    else printf("TLB miss at write destination=%d offset=%d value=%d\n", destination, offset, data);
 
-  /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
+  #ifdef PAGETBL_DUMP
+  /* Print maximum page table */
+    print_pgtbl(proc, 0, -1); //print max TBL
+  #endif
+  #endif
+  #ifdef TLBDUMP
+  /* Dump TLB memory physical address */
+    TLBMEMPHY_dump(proc->tlb, proc->pid, pgn);
+  #endif
+
+  /* Write data to memory */
+  if (frmnum < 0) 
+  {
+    int rgid; // Region ID
+
+    /* Find region start address */
+    for (rgid = 0; rgid < PAGING_MAX_SYMTBL_SZ; rgid++) 
+    {
+      if (proc->mm->symrgtbl[rgid] != NULL && proc->mm->symrgtbl[rgid]->rg_start == addr) 
+        break;
+    }
+
+    /* Check if region was found */
+    if (rgid == PAGING_MAX_SYMTBL_SZ) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: No region found\n");
+      #endif
+        return -1;
+    }
+
+    /* Write data to region */
+    val = __write(proc, 0, rgid, offset, data);
+    if (val < 0) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: Write error\n");
+      #endif
+
+        return -1;
+    }
+  } 
+  else 
+  {
+    addr += offset;
+    int off = PAGING_OFFST(addr); // Offset in the page
+    int phyaddr = (frmnum << PAGING_ADDR_FPN_LOBIT) + off; // Physical address
+    val = MEMPHY_write(proc->mram, phyaddr, data, RAM_LCK); // Write data
+    if (val < 0) 
+    {
+      #ifdef DEBUG
+        printf("WARNING: Write error\n");
+      #endif
+      
+      return -1;
+    }
+  }
+
+  #ifdef DEBUG
+    frmnum = PAGING_FPN(proc->mm->pgd[pgn]);
+    MEMPHY_dump(proc->mram, frmnum, offset, offset + 1);
+  #endif
 
   return val;
 }

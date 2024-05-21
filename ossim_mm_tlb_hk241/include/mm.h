@@ -1,4 +1,4 @@
-#ifndef MM_H
+ifndef MM_H
 
 #include "bitops.h"
 #include "common.h"

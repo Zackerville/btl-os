@@ -75,9 +75,9 @@ struct pcb_t {
 	// and this vale overwrites the default priority when it existed
 	uint32_t prio;     
 #endif
-#ifdef CPU_TLB
+
 	struct memphy_struct *tlb;
-#endif
+
 #ifdef MM_PAGING
 	struct mm_struct *mm;
 	struct memphy_struct *mram;

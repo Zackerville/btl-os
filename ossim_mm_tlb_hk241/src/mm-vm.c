@@ -84,8 +84,8 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 
   if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
   {
-    caller->mm->symrgtbl[rgid].rg_start = rgnode.rg_start;
-    caller->mm->symrgtbl[rgid].rg_end = rgnode.rg_end;
+    caller->mm->symrgtbl[rgid]->rg_start = rgnode.rg_start;
+    caller->mm->symrgtbl[rgid]->rg_end = rgnode.rg_end;
 
     *alloc_addr = rgnode.rg_start;
 
@@ -98,7 +98,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
   int inc_sz = PAGING_PAGE_ALIGNSZ(size);
   //int inc_limit_ret
-  int old_sbrk ;
+  int old_sbrk;
 
   old_sbrk = cur_vma->sbrk;
 
@@ -113,8 +113,8 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 		cur_vma->sbrk += size;
 
   /*Successful increase limit */
-  caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
-  caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
+  caller->mm->symrgtbl[rgid]->rg_start = old_sbrk;
+  caller->mm->symrgtbl[rgid]->rg_end = old_sbrk + size;
 
   *alloc_addr = old_sbrk;
 
@@ -140,8 +140,8 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
 
   /*enlist the obsoleted memory region */
   enlist_vm_freerg_list(caller->mm, rgnode);
-  caller->mm->symrgtbl[rgid].rg_start = 0;
-	caller->mm->symrgtbl[rgid].rg_end = 0;
+  caller->mm->symrgtbl[rgid]->rg_start = 0;
+	caller->mm->symrgtbl[rgid]->rg_end = 0;
   return 0;
 }
 
