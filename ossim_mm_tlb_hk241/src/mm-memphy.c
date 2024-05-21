@@ -6,7 +6,7 @@
 
 #include "mm.h"
 #include <stdlib.h>
-
+#include <stdio.h>
 /*
  *  MEMPHY_mv_csr - move MEMPHY cursor
  *  @mp: memphy struct
@@ -163,7 +163,7 @@ int MEMPHY_dump(struct memphy_struct * mp)
     if (mp == NULL)
         return -1;
 
-    printf("Memory Dump:\n");
+    printf("Memory Dump: \n");
     if (mp && mp->storage){
         
     for (int i = 0; i < mp->maxsz; i++)
