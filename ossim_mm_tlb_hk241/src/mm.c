@@ -102,7 +102,8 @@ int vmap_page_range(struct pcb_t *caller, // process call
   
   for(pgit = 0; pgit < pgnum; pgit++){
     fpit = fpit->fp_next;
-    pgn = PAGING_PGN(addr + pgit*PAGING_PAGESZ); //this is index of this page in process's page table
+    int temp = addr + pgit*PAGING_PAGESZ;
+    pgn = PAGING_PGN(temp); //this is index of this page in process's page table
     if(fpit){
       pte_set_fpn(&(caller->mm->pgd[pgn]),fpit->fpn);
       /* Tracking for later page replacement activities (if needed)
