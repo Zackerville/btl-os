@@ -51,7 +51,7 @@ struct mm_struct {
    struct vm_area_struct *mmap;
 
    /* Currently we support a fixed number of symbol */
-   struct vm_rg_struct *symrgtbl[PAGING_MAX_SYMTBL_SZ];
+   struct vm_rg_struct symrgtbl[PAGING_MAX_SYMTBL_SZ];
 
    /* list of free page */
    struct pgn_t *fifo_pgn;
@@ -68,6 +68,12 @@ struct framephy_struct {
    struct mm_struct* owner;
 };
 
+struct tlb_entry_struct {
+   int pid;
+   int page_number;
+   int address;
+};
+
 struct memphy_struct {
    /* Basic field of data and size */
    BYTE *storage;
@@ -80,6 +86,9 @@ struct memphy_struct {
    /* Management structure */
    struct framephy_struct *free_fp_list;
    struct framephy_struct *used_fp_list;
+
+   struct tlb_entry_struct *tlb_cache_entries;
+   int tlb_entry_count;
 };
 
 #endif

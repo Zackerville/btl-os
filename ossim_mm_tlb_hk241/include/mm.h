@@ -60,9 +60,7 @@
 /* SWAPFPN */
 #define PAGING_SWP_LOBIT NBITS(PAGING_PAGESZ)
 #define PAGING_SWP_HIBIT (NBITS(PAGING_MEMSWPSZ) - 1)
-//#define PAGING_SWP(pte) ((pte&PAGING_SWP_MASK) >> PAGING_SWPFPN_OFFSET) // PAGING_SWPFPN_OFFSET = 16
-#define PAGING_SWP(pte) ((pte&PAGING_PTE_SWPOFF_MASK) >> PAGING_PTE_SWPOFF_LOBIT) // PAGING_SWP_LOBIT = 8
-
+#define PAGING_SWP(pte) ((pte&PAGING_SWP_MASK) >> PAGING_SWPFPN_OFFSET)
 
 /* Value operators */
 #define SETBIT(v,mask) (v=v|mask)
@@ -93,19 +91,15 @@
 #define INCLUDE(x1,x2,y1,y2) (((y1-x1)*(x2-y2)>=0)?1:0)
 #define OVERLAP(x1,x2,y1,y2) (((y2-x1)*(x2-y1)>=0)?1:0)
 
-#define TLB_INDEX(pid, pgn) ((pid << NBITS32(PAGING_MAX_PGN)) | pgn)
-
-#define RAM_LCK 0
-#define SWP_LCK 1
-
 /* VM region prototypes */
 struct vm_rg_struct * init_vm_rg(int rg_start, int rg_endi);
 int enlist_vm_rg_node(struct vm_rg_struct **rglist, struct vm_rg_struct* rgnode);
 int enlist_pgn_node(struct pgn_t **pgnlist, int pgn);
 int vmap_page_range(struct pcb_t *caller, int addr, int pgnum, 
-                    struct framephy_struct *frames, struct vm_rg_struct *ret_rg);
+                    struct framephy_struct *frames, struct vm_rg_struct *ret_rg,
+                    struct framephy_struct *frm_lst_swp);
 int vm_map_ram(struct pcb_t *caller, int astart, int send, int mapstart, int incpgnum, struct vm_rg_struct *ret_rg);
-int alloc_pages_range(struct pcb_t *caller, int incpgnum, struct framephy_struct **frm_lst);
+int alloc_pages_range(struct pcb_t *caller, int incpgnum, struct framephy_struct **frm_lst, struct framephy_struct **frm_lst_swp);
 int __swap_cp_page(struct memphy_struct *mpsrc, int srcfpn,
                 struct memphy_struct *mpdst, int dstfpn) ;
 int pte_set_fpn(uint32_t *pte, int fpn);
@@ -130,12 +124,12 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index);
 int tlbfree_data(struct pcb_t *proc, uint32_t reg_index);
 int tlbread(struct pcb_t * proc, uint32_t source, uint32_t offset, uint32_t destination) ;
 int tlbwrite(struct pcb_t * proc, BYTE data, uint32_t destination, uint32_t offset);
+int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE *value);
+int tlb_cache_write(struct memphy_struct * mp, int pid, int pgnum, BYTE value);
 int init_tlbmemphy(struct memphy_struct *mp, int max_size);
-int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, uint32_t *value);
-int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, uint32_t value);
 int TLBMEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value);
 int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data);
-int TLBMEMPHY_dump(struct memphy_struct * mp, int pid, int pgnum);
+int TLBMEMPHY_dump(struct memphy_struct * mp);
 
 /* VM prototypes */
 int pgalloc(struct pcb_t *proc, uint32_t size, uint32_t reg_index);
@@ -155,12 +149,13 @@ struct vm_rg_struct * get_symrg_byid(struct mm_struct* mm, int rgid);
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend);
 int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_struct *newrg);
 int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz);
-int find_victim_page(struct pcb_t *caller, struct mm_struct *mm, int *retpgn);
+int find_victim_page(struct mm_struct* mm, int *pgn);
 struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid);
 
 /* MEM/PHY protypes */
 int MEMPHY_get_freefp(struct memphy_struct *mp, int *fpn);
 int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn);
+int MEMPHY_put_usedfp(struct memphy_struct *mp, int fpn);
 int MEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value);
 int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data);
 int MEMPHY_dump(struct memphy_struct * mp);
@@ -173,5 +168,4 @@ int print_list_vma(struct vm_area_struct *rg);
 
 int print_list_pgn(struct pgn_t *ip);
 int print_pgtbl(struct pcb_t *ip, uint32_t start, uint32_t end);
-
 #endif

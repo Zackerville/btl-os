@@ -76,7 +76,9 @@ struct pcb_t {
 	uint32_t prio;     
 #endif
 
+#ifdef CPU_TLB
 	struct memphy_struct *tlb;
+#endif
 
 #ifdef MM_PAGING
 	struct mm_struct *mm;
